@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 
 const { v4: uuidv4, validate } = require('uuid');
+const regexUuid = /^[0-9A-F]{8}-[0-9A-F]{4}-[4][0-9A-F]{3}-[89AB][0-9A-F]{3}-[0-9A-F]{12}$/i;
 
 const app = express();
 app.use(express.json());
@@ -10,19 +11,69 @@ app.use(cors());
 const users = [];
 
 function checksExistsUserAccount(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+    
+  const user = users.find((user) => user.username === username); 
+  if (!user){
+      return response.status(404).json({ error: "User not found" })
+  }
+
+  request.user = user; 
+  return next();
 }
 
 function checksCreateTodosUserAvailability(request, response, next) {
-  // Complete aqui
+  const { user } = request;
+
+  if (user.todos.length >= 10 && !user.pro){
+    return response.status(403).json({ error: "Todo limit reached" })
+  }
+  
+  return next();
 }
 
 function checksTodoExists(request, response, next) {
-  // Complete aqui
+  const { username } = request.headers;
+  const { id } = request.params;
+  
+  //validando a existência do usuário:
+  const user = users.find((user) => user.username === username); 
+  if (!user){
+      return response.status(404).json({ error: "User not found" })
+  }
+
+  //Verificando se o id do todo é um uuid:
+  if(!regexUuid.test(id)){
+    return response.status(400).json({ error: "Id is not valid" })
+  }
+  
+  //validando a existência do todo para este usuário:
+  const todo = user.todos.find((todo) => todo.id === id); 
+  if(!todo){
+      return response.status(404).json({ error: "Todo not found" })
+  }
+
+  request.user = user; 
+  request.todo = todo; 
+  
+  return next();
 }
 
-function findUserById(request, response, next) {
-  // Complete aqui
+function findUserById(request, response, next) {  
+  const { id } = request.params;
+
+  //Verificando se o id do todo é um uuid:
+  if(!regexUuid.test(id)){
+    return response.status(400).json({ error: "Id is not valid" })
+  }
+
+  const user = users.find((user) => user.id === id);
+  if (!user){
+      return response.status(404).json({ error: "User not found" })
+  } 
+
+  request.user = user;   
+  return next();
 }
 
 app.post('/users', (request, response) => {
